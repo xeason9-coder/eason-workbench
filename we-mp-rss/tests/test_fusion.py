@@ -137,8 +137,36 @@ class FusionTest(unittest.TestCase):
                          json={"client_id": "b", "message": "PMP"}).status_code, 404)
         self.assertEqual(self.http.get("/fusion/auth/session", headers={**self.headers,
                          "X-Fusion-Client": "b"}).status_code, 404)
-        for path in ("settings", "wechat/status", "weread/status", "wechat/search?q=PMP"):
+        for path in ("settings", "wechat/status", "weread/status", "weread/search?q=PMP"):
             self.assertEqual(self.get(path).status_code, 403)
+
+    def test_internal_members_can_search_sources_with_selected_client_access(self):
+        self.login()
+        for role in ("member", "manager"):
+            with self.subTest(role=role), desk.Session.begin() as db:
+                db.execute(fusion.members.update().where(fusion.members.c.user_id == self.member.id).values(role=role))
+            hit = {"id": "MP_WXS_333333", "name": "虚构公众号"}
+            with patch.object(desk, "search_wechat_sources", return_value={"items": [hit]}) as search:
+                response = self.get("wechat/search?q=PMP")
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json()["items"], [hit])
+                self.assertEqual(self.get("wechat/search?q=PMP&client_id=b").status_code, 404)
+                self.assertEqual(self.http.get("/fusion/monitor/wechat/search?q=PMP",
+                    headers={**self.headers, "X-Fusion-Client": "b"}).status_code, 404)
+                search.assert_called_once_with("PMP")
+            for path in ("wechat/qr", "weread/qr"):
+                self.assertEqual(self.http.post("/fusion/monitor/" + path, headers=self.headers).status_code, 403)
+            for path in ("settings", "wechat/status", "weread/status", "wechat/qr-image", "weread/qr-image"):
+                self.assertEqual(self.get(path).status_code, 403)
+
+    def test_external_and_anonymous_source_search_never_reaches_wechat(self):
+        with patch.object(desk, "search_wechat_sources") as search:
+            self.assertEqual(self.get("wechat/search?q=PMP").status_code, 401)
+            self.login("external")
+            self.assertEqual(self.get("wechat/search?q=PMP").status_code, 403)
+            self.assertEqual(self.http.post("/fusion/monitor/clients/a/sources", headers=self.headers,
+                json={"name": "虚构公众号", "identifier": "MP_WXS_333333"}).status_code, 403)
+            search.assert_not_called()
 
     def test_external_reads_exports_and_model_context_are_grant_scoped(self):
         self.login("external")

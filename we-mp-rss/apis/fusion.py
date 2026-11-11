@@ -249,7 +249,7 @@ MONITOR_PATHS = {
     "/settings", "/model-test", "/weread/shelf", "/weread/search", "/wechat/search",
     "/wechat/qr", "/wechat/status", "/wechat/qr-image", "/weread/qr", "/weread/status", "/weread/qr-image",
 }
-ADMIN_PATHS = {"settings", "model-test", "weread/shelf", "weread/search", "wechat/search",
+ADMIN_PATHS = {"settings", "model-test", "weread/shelf", "weread/search",
                "wechat/qr", "wechat/status", "wechat/qr-image", "weread/qr", "weread/status", "weread/qr-image"}
 for route in legacy.router.routes:
     path = route.path.removeprefix("/workbench/api")
