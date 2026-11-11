@@ -361,12 +361,16 @@ class WorkbenchTests(unittest.TestCase):
         from core.wx.model.weread_mp import WereadMPAPIError
         run_id, ids = desk.prepare_sync("a", user=self.user)
         with patch("core.wx.model.weread_mp.MpsWereadMP") as collector:
-            collector.return_value.get_Articles.side_effect = WereadMPAPIError(-2041, "rejected", False)
+            error = WereadMPAPIError(-2041, "rejected", False)
+            error.endpoint = "/web/mp/articles"
+            collector.return_value.get_Articles.side_effect = error
             desk.execute_sync(run_id, ids, user=self.user)
             self.assertEqual(collector.return_value.get_Articles.call_count, 1)
         with self.factory() as db:
             result = json.loads(db.get(desk.SyncRun, run_id).results)[0]
             self.assertEqual(result["code"], "-2041")
+            self.assertEqual(result["endpoint"], "/web/mp/articles")
+            self.assertIn("安全验证", result["message"])
             self.assertIn("尚未完成全部更新", result["message"])
             self.assertNotIn("配额", result["message"])
 

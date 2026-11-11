@@ -129,8 +129,7 @@ class MpsWeread(WxGather):
             "Referer": "https://weread.qq.com/",
         }
         if include_ticket and self._weread_ticket:
-            # 新版微信读书已弃用 x-wr-ticket，仅需有效 Cookie 即可拉取文章列表；
-            # 保留旧逻辑以便兼容旧版微信读书。无 ticket 时不拦截请求。
+            # 兼容既有票据配置；不能替代官方页面按次完成的安全验证。
             headers["x-wr-ticket"] = self._weread_ticket
         return headers
 

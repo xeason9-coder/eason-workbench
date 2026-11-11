@@ -170,17 +170,31 @@ class IsolationTests(unittest.TestCase):
                     provider.return_value.get_Articles.assert_called_once()
                 with self.factory() as db:
                     runs = [r for r in db.query(desk.SyncRun) if r.id not in previous_runs]
-                    self.assertEqual(len(runs), 2)
-                    self.assertEqual({r.owner_id for r in runs}, {self.user.id, self.manager.id})
+                    self.assertEqual(len(runs), 2 if outcome == "success" else 1)
+                    if outcome == "success":
+                        self.assertEqual({r.owner_id for r in runs}, {self.user.id, self.manager.id})
                     self.assertEqual({r.status for r in runs}, {outcome})
                     results = [json.loads(r.results)[0] for r in runs]
                 self.assertEqual(sum(r["added"] for r in results), 0 if outcome == "failed" else 1)
-                reused = next(r for r in results if r.get("reused"))
-                self.assertEqual((reused["added"], reused["articles"]), (0, []))
-                self.assertIn("复用本轮", reused["message"])
+                if outcome == "success":
+                    reused = next(r for r in results if r.get("reused"))
+                    self.assertEqual((reused["added"], reused["articles"]), (0, []))
+                    self.assertIn("复用本轮", reused["message"])
         with patch("core.wx.model.weread_mp.MpsWereadMP") as provider:
             desk.execute_sync(*desk.prepare_sync("a", user=self.user), user=self.user)
             provider.return_value.get_Articles.assert_called_once()
+
+    def test_scheduled_rejection_stops_other_clients_with_different_sources(self):
+        from core.wx.model.weread_mp import WereadMPAPIError
+        with patch("core.wx.model.weread_mp.MpsWereadMP") as provider:
+            provider.return_value.get_Articles.side_effect = WereadMPAPIError(-2041, "verification required", False)
+            desk.scheduled_sync()
+            provider.return_value.get_Articles.assert_called_once()
+        with self.factory() as db:
+            runs = db.query(desk.SyncRun).all()
+            self.assertEqual(len(runs), 1)
+            self.assertEqual(runs[0].status, "failed")
+        self.assertFalse(desk._sync_lock.locked())
 
     def test_keywords_batch_counts_each_model_call_without_interactive_delay(self):
         with self.factory.begin() as db:

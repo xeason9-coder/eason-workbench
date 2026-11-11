@@ -654,12 +654,14 @@ def execute_sync(run_id, ids, *, user, checked_sources=None):
             if error:
                 code = getattr(error, "code", "")
                 message = {
-                    "-2041": "微信读书公众号接口拒绝请求，本轮已停止；尚未完成全部更新，已入库文章保留。",
+                    "-2041": "微信读书要求安全验证，本轮已停止；尚未完成全部更新，已入库文章保留。重复扫码登录不保证恢复，请管理员检查微信读书官方页面的验证提示。",
                     "-2012": "微信读书返回登录相关错误，请管理员检查登录状态。",
                     "-2010": "微信读书未识别当前登录，请管理员检查登录状态。",
                 }.get(str(code), "采集未完成，已入库文章仍可使用。")
                 item.update(status="partial" if added else "failed", message=message, code=str(code)[:60],
                             detail=error.message if isinstance(error, WereadMPAPIError) else "")
+                if isinstance(error, WereadMPAPIError) and getattr(error, "endpoint", ""):
+                    item["endpoint"] = error.endpoint
             stop = isinstance(error, WereadMPAPIError) and (not error.retriable or error.code in (401, 403, 429, 499))
             if checked_sources is not None:
                 checked_sources[feed_id] = (dict(item), stop)
@@ -792,6 +794,9 @@ def scheduled_sync():
             continue
         try:
             execute_sync(*prepare_sync(client_id, user=user), user=user, checked_sources=checked_sources)
+            # All clients share one collector login; a rejection stops this scheduled batch.
+            if any(stop for _, stop in checked_sources.values()):
+                break
         except (ValueError, HTTPException):
             continue
 
