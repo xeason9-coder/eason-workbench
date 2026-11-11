@@ -15,10 +15,10 @@ export async function api(req:Request,env:any){try{
  if(!env.DB||!env.BUCKET)fail('存储服务尚未就绪',503);
  const fusion=env.FUSION_CONTEXT,client=fusion?.client,external=client?.role==='external';
  const uid=client?'client:'+client.id:req.headers.get('oai-authenticated-user-id'),email=fusion?fusion.user.username+'@local':req.headers.get('oai-authenticated-user-email');if(!uid||!email)fail('请登录知识库。',401);
- const modelOwner=fusion?(env.FUSION_MODEL_OWNER||'fusion-admin-model'):uid;
+ const modelOwner=uid;
  const visible=(v:R)=>!external||(v.kind==='library'||v.kind==='document'?client.grants.documents.includes(v.id):v.kind==='chunk'?client.grants.documents.includes(v.docId):v.kind==='task'?client.grants.tasks.includes(v.id):v.kind==='history'?client.grants.tasks.includes(v.taskId):false);
  const shareView=(v:R)=>external&&['task','history'].includes(v.kind)?{...v,rules:[],sourceCandidates:[],requestedSources:[],selectedSourceIds:[],referenceArticles:(v.referenceArticles||[]).filter((a:R)=>client.grants.articles.includes(a.id)),evidence:(v.evidence||[]).map((s:R)=>({ref:s.ref,title:s.title,source:s.source,sourceVersion:s.sourceVersion,revision:s.revision,docId:s.docId}))}:v;
- if(req.method!=='GET'){const origin=req.headers.get('origin');if(origin&&origin!==new URL(req.url).origin)fail('不允许跨站请求',403);}
+ if(!fusion&&req.method!=='GET'){const origin=req.headers.get('origin');if(origin&&origin!==new URL(req.url).origin)fail('不允许跨站请求',403);}
  async function list(kind:string){const r=await env.DB.prepare('SELECT * FROM studio_records WHERE owner=? AND kind=? ORDER BY created DESC').bind(uid,kind).all();return r.results.map(parse).filter(visible).map((v:R)=>kind==='chunk'?{...classifyKnowledge(v.body,v.title),...v}:shareView(v));}
  function parse(r:any){return {...JSON.parse(r.payload),id:r.id,kind:r.kind,state:r.state,owner:r.owner,revision:r.revision,created:r.created,updated:r.updated};}
  async function get(rid:string,kind?:string){const r=await env.DB.prepare('SELECT * FROM studio_records WHERE id=? AND owner=?').bind(rid,uid).first();if(!r||kind&&r.kind!==kind)fail('记录不存在或无权访问',404);const v=parse(r);if(!visible(v))fail('记录不存在或无权访问',404);return shareView(v);}
@@ -26,7 +26,7 @@ export async function api(req:Request,env:any){try{
  async function save(r:R,p:R,state=r.state){if(fusion&&r.state==='running'&&['task','ingestion'].includes(r.kind)&&p.autoAdvance===undefined){const latest=await get(r.id);p={...p,autoAdvance:latest.autoAdvance};}const res=await env.DB.prepare('UPDATE studio_records SET payload=?,state=?,revision=revision+1,updated=? WHERE id=? AND owner=? AND revision=?').bind(JSON.stringify({...r,...p}),state,now(),r.id,uid,r.revision).run();if(res.meta.changes!==1)fail('内容已更新，请刷新后重试',409);return get(r.id);}
  const path=new URL(req.url).pathname.replace('/api/studio/','').split('/'),action=path[0];
  if(fusion&&action==='libraryImport')fail('初始化资料尚未分配，不允许自动导入客户空间',403);
- if(fusion&&action==='modelSettings'&&fusion.user.role!=='admin')fail('模型连接由管理员统一配置',403);
+ if(fusion&&action==='modelSettings'&&fusion.user.role!=='admin'&&client.role!=='manager')fail('只有本客户空间的创建者或管理员可以配置模型',403);
  if(external&&req.method!=='GET'&&action!=='search')fail('外部账号仅可阅读明确共享的内容',403);
  if(action==='modelSettings')return await modelSettingsAPI(req,env,modelOwner,json);
  if(action==='state'||action==='run'||action==='planTopics'||action==='automation'||action.startsWith('ingestion'))env=await resolveModelEnv(env,modelOwner);

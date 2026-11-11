@@ -1,4 +1,4 @@
-# 客户知识与内容工作台（本地融合版）
+# 知识与内容工作台（融合版）
 
 以原知识库项目为主系统，接入公众号监测与 Eason 检索。资料管理、知识整理、研究策划、内容写作、内容检查、人工审核、引用与草稿版本继续保留。来源基线为 `2f99d1dd7d26c1a5efa5303c65d6d1c48a4016d5`；原历史保留在来源仓库，见根目录 SOURCE_VERSIONS.md。
 
@@ -53,7 +53,7 @@ Eason / 检索页默认在右侧展开助手，可收起为窄栏；收起保留
 
 四类 Agent 保留独立指令和证据边界。后台每5秒检查持久队列，同时最多执行两项知识库任务；Eason另有最多两项对话并行及有界排队。关页面不会停止已启用自动流程；Sources、主题、大纲、知识保存和终审仍等待人工操作。失败不自动付费重试，用户明确重试后继续已保存阶段。中断运行状态最多约3分钟后显示失败，不能保证供应商对失败请求不收费。
 
-四类知识与内容 Agent 的管理员共享模型设置支持官方 OpenAI/DeepSeek 固定 HTTPS 地址、连接测试、失败保留旧配置、停用回退和修订冲突。密钥使用 AES-256-GCM 服务端加密，读取接口不返回密钥。Eason 使用采集连接区域中的独立 DeepSeek 模型配置，两处不联动。当前复用已有 API，不宣称模型自研或自训。兼容 JSON Object 时仍进行服务端严格结构与逐字引文验证。管理员连接、环境回退与加密主密钥位置见 [LOCAL_RUN.md](../LOCAL_RUN.md)。
+四类知识与内容 Agent 按客户空间保存独立模型配置；空间创建者及系统管理员可选官方 OpenAI/DeepSeek、填写自己的 API Key，普通协作成员和外部账号不能改动连接。新空间待配置；可主动选择工作台默认服务，停用后不会自动回退。连接测试失败保留原配置，修订冲突和提交客户标识检查防止覆盖或串用。密钥使用 AES-256-GCM 服务端加密，读取接口不返回密钥。Eason 使用采集连接区域中的独立 DeepSeek 模型配置，两处不联动。当前复用已有 API，不宣称模型自研或自训。兼容 JSON Object 时仍进行服务端严格结构与逐字引文验证。连接、工作台默认配置与加密主密钥位置见 [LOCAL_RUN.md](../LOCAL_RUN.md)。
 
 Sources最多60条候选、人工选1–20条事实；适用写作规则独立应用。生成与编辑保存草稿及来源快照。历史可查看和下载，未加入一键恢复编辑、自由Flow、向量数据库或自动发布。
 
@@ -62,6 +62,7 @@ Sources最多60条候选、人工选1–20条事实；适用写作规则独立�
 ```sh
 pnpm test
 node tests/fusion-access.integration.mjs
+node tests/client-models.integration.mjs
 node tests/fusion-uploads.integration.mjs
 node tests/fusion-pages.integration.mjs
 pnpm build

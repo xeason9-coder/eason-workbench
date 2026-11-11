@@ -12,7 +12,7 @@
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/wrangler-dist/cli.js dev --config dist/server/wrangler.json --local --persist-to ../runtime/kb --ip 127.0.0.1 --port 5173 --env-file .dev.vars --inspector-port 0",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
-    "test": "node --test tests/knowledge.test.mjs tests/ingestion.test.mjs && node tests/integration.mjs && node tests/ingestion.integration.mjs && node tests/model-settings.integration.mjs"
+    "test": "node --test tests/knowledge.test.mjs tests/ingestion.test.mjs && node tests/integration.mjs && node tests/ingestion.integration.mjs && node tests/model-settings.integration.mjs && node tests/client-models.integration.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

@@ -20,7 +20,7 @@ if (!existsSync(servicePath)) writeFileSync(servicePath, randomBytes(32).toStrin
 const settingsPath = path.join(collector, 'data/workbench-settings.json');
 const settings = existsSync(settingsPath) ? JSON.parse(readFileSync(settingsPath, 'utf8')) : {};
 const apiKey = process.env.DEEPSEEK_API_KEY || settings.api_key || '';
-const config = {FUSION_LOCAL: '1', FUSION_COLLECTOR_URL: 'http://127.0.0.1:8768', FUSION_SERVICE_TOKEN: readFileSync(servicePath, 'utf8').trim(), MODEL_SETTINGS_ENCRYPTION_KEY: readFileSync(masterPath, 'utf8').trim(), AI_URL: apiKey ? 'https://api.deepseek.com/chat/completions' : '', AI_MODEL: apiKey ? settings.model || 'deepseek-flash' : '', AI_KEY: apiKey, AI_RESPONSE_FORMAT: 'json_object', FUSION_MODEL_OWNER: 'fusion-admin-model', FUSION_STORAGE_QUOTA_BYTES: String(512 * 1024 * 1024)};
+const config = {FUSION_LOCAL: '1', FUSION_COLLECTOR_URL: 'http://127.0.0.1:8768', FUSION_SERVICE_TOKEN: readFileSync(servicePath, 'utf8').trim(), MODEL_SETTINGS_ENCRYPTION_KEY: readFileSync(masterPath, 'utf8').trim(), AI_URL: apiKey ? 'https://api.deepseek.com/chat/completions' : '', AI_MODEL: apiKey ? settings.model || 'deepseek-flash' : '', AI_KEY: apiKey, AI_RESPONSE_FORMAT: 'json_object', FUSION_STORAGE_QUOTA_BYTES: String(512 * 1024 * 1024)};
 writeFileSync(configPath, Object.entries(config).map(([k, v]) => k + '=' + JSON.stringify(v)).join('\n') + '\n', {flag: 'wx', mode: 0o600});
 console.log('已创建本地服务配置；未输出密钥，未更改既有采集账号。');
-if (!apiKey) console.log('模型尚未配置：启动后由管理员在页面设置，其他账号无需填写 API Key。');
+if (!apiKey) console.log('默认模型尚未配置：启动后，各空间创建者可在工作台设置中填写自己的 API Key。');

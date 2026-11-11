@@ -127,6 +127,7 @@ function taskPayload(extra = {}) {return {title: '共享成稿', keyword: '项�
 try {
   db = await mf.getD1Database('DB'); bucket = await mf.getR2Bucket('BUCKET');
   for (const file of readdirSync('drizzle').filter(f => f.endsWith('.sql'))) await db.exec(readFileSync('drizzle/' + file, 'utf8').replace(/--> statement-breakpoint/g, '').replace(/\n/g, ' '));
+  for (const client of ['a', 'b']) await put('model-settings:client:' + client, 'modelSettings', client, {enabled: false, useDefault: true}, 'saved');
   for (const [id, client, body] of [['doc-a-shared', 'a', 'SHARED_A_BODY 项目方法'], ['doc-a-private', 'a', 'PRIVATE_A_BODY 项目内部'], ['doc-b-private', 'b', 'PRIVATE_B_BODY 项目秘密']]) {
     const fileKey = id + '.md'; await bucket.put(fileKey, '# 测试\n' + body);
     await put(id, 'document', client, {name: id + '.md', markdown: '# 测试\n' + body, fileKey, hash: id, purpose: 'fact', external: true, sourceVersion: 1, coverage: true, source: id, events: [], effective: '2020-01-01'});
@@ -401,6 +402,9 @@ try {
     ]) assert.equal((await studio('state', {...proxy, headers})).status, 403);
     assert.equal((await request('/api/fusion/select', {...proxy, body: {id: 'a'}, headers: {host: 'studio.test'}})).status, 403);
     assert.equal(collectorRequests.length, before);
+    const settings = await studio('modelSettings', {...proxy, person: 'admin'});
+    const saved = await studio('modelSettings', {...proxy, person: 'admin', body: {action: 'useDefault', clientId: 'a', revision: settings.data.revision}});
+    assert.equal(saved.status, 200, saved.text);
     assert.equal((await studio('state', {...proxy, person: null, headers: {...proxy.headers, 'oai-authenticated-user-id': 'admin', 'oai-authenticated-user-email': 'owner@example.test'}})).status, 401);
     const selected = await request('/api/fusion/select', {...proxy, person: 'admin', body: {id: 'b'}});
     assert.equal(selected.status, 200, selected.text);
