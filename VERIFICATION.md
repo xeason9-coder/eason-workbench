@@ -9,8 +9,10 @@
 - Windows 启动、停止和备份脚本 PowerShell 语法解析。
 - KB `pnpm exec tsc --noEmit` 和 `pnpm build`。
 - KB `pnpm test`：11 项知识/整理单元检查，以及资料上传解析下载、权限隔离、工作流、模型设置等集成检查。私人资料包已改用虚构上传样本测试。
-- KB `node tests/fusion-access.integration.mjs`：16 项融合鉴权、跨客户隔离、外部分享、后台任务与人工确认边界。
-- 采集器 `tests.test_fusion`：14 项检查通过，使用临时 SQLite 和隔离配置；解释器复用本机已有 Python 环境。
+- KB `node tests/fusion-access.integration.mjs`：17 项融合鉴权、跨客户隔离、外部分享、后台任务与人工确认边界。
+- 采集器 `tests.test_fusion`：15 项检查通过，使用临时 SQLite 和隔离配置；解释器复用本机已有 Python 环境。
+
+追加 HTTPS 适配验证：使用真实本地 HTTP 请求模拟反代 Host，核对配置中的 HTTPS Origin、错误 Host/Origin、缺失 Origin 的写操作、伪造 OAI 身份头、Secure Cookie、后台服务令牌与无效配置。Python 验证公网登录/登出 Cookie 和本地 HTTP 兼容；不信任任意 X-Forwarded-*。
 
 模型响应均为测试替身，未产生本轮真实模型调用；隔离测试未改动正在使用的正式数据库。
 

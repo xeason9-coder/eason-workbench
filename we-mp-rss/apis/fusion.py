@@ -52,9 +52,10 @@ class MemberInput(Input):
 
 @router.post("/auth/login")
 async def login(data: LoginInput, request: Request, response: Response):
+    secure = bool(auth._public_origin("FUSION_PUBLIC_ORIGIN"))
     user, token, ttl = await run_in_threadpool(auth._login, data.username, data.password, request.client.host)
     response.set_cookie(auth.COOKIE_NAME, token, max_age=ttl, path="/", httponly=True,
-                        secure=False, samesite="lax")
+                        secure=secure, samesite="lax")
     response.headers["Cache-Control"] = "no-store"
     # A stale client's cookie must not turn a successful login into an error.
     return {"authenticated": True, "user": asdict(user), "clients": fusion.clients_for(user), "client": None}
@@ -66,7 +67,8 @@ def logout(request: Request, response: Response):
     if token:
         with auth._transaction() as conn:
             conn.execute(delete(auth.sessions).where(auth.sessions.c.token_hash == auth._token_hash(token)))
-    response.delete_cookie(auth.COOKIE_NAME, path="/", httponly=True, samesite="lax")
+    response.delete_cookie(auth.COOKIE_NAME, path="/", httponly=True, samesite="lax",
+                           secure=bool(auth._public_origin("FUSION_PUBLIC_ORIGIN")))
     return {"authenticated": False}
 
 

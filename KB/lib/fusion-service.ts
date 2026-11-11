@@ -29,8 +29,27 @@ export async function fusionSession(request: Request, env: R) {
   return result;
 }
 
-export function requireSameOrigin(request: Request) {
+export function publicOrigin(env: R) {
+  if (!env.FUSION_PUBLIC_ORIGIN) return '';
+  try {
+    const url = new URL(env.FUSION_PUBLIC_ORIGIN);
+    if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw Error();
+    return url.origin;
+  } catch { throw Object.assign(Error('FUSION_PUBLIC_ORIGIN 必须是无路径的 HTTPS 站点地址'), {code: 503}); }
+}
+
+export function requireSameOrigin(request: Request, env: R) {
+  const url = new URL(request.url), configured = publicOrigin(env);
+  const host = (request.headers.get('host') || url.host).toLowerCase();
   const origin = request.headers.get('origin');
-  if (origin && origin !== new URL(request.url).origin) throw Object.assign(Error('不允许跨站请求'), {code: 403});
+  // The background endpoint still requires its service token inside fusionApi.
+  const internalTick = url.pathname === '/api/fusion/background/tick' && !origin &&
+    ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname) && host === url.host;
+  const expected = configured && !internalTick ? configured : url.origin;
+  if (configured && !internalTick && (host !== new URL(configured).host ||
+      !['GET', 'HEAD', 'OPTIONS'].includes(request.method) && !origin)) {
+    throw Object.assign(Error('不允许的访问地址或缺少同源标识'), {code: 403});
+  }
+  if (origin && origin !== expected) throw Object.assign(Error('不允许跨站请求'), {code: 403});
   if (request.headers.get('sec-fetch-site') === 'cross-site') throw Object.assign(Error('不允许跨站请求'), {code: 403});
 }

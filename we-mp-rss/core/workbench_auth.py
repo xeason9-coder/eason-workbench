@@ -164,14 +164,14 @@ def upsert_user(username, password, role, reset_password=False):
         return Principal(user_id, username, role)
 
 
-def _public_origin():
-    origin = os.environ.get("EASON_PUBLIC_ORIGIN", "").rstrip("/")
+def _public_origin(env_name="EASON_PUBLIC_ORIGIN"):
+    origin = os.environ.get(env_name, "").rstrip("/")
     if not origin:
         return ""
     parsed = urlsplit(origin)
     if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
             or parsed.path or parsed.query or parsed.fragment):
-        raise ValueError("EASON_PUBLIC_ORIGIN must be a single HTTPS origin without path or credentials")
+        raise ValueError(f"{env_name} must be a single HTTPS origin without path or credentials")
     return f"https://{parsed.netloc.lower()}"
 
 

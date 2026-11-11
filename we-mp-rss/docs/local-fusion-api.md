@@ -6,7 +6,7 @@
 
 - Python 地址使用环回地址；每次 `/fusion/*` 请求携带 `Authorization: Bearer <服务密钥>`，服务端同时检查连接来源为环回地址。
 - 密钥来自环境变量 `FUSION_SERVICE_TOKEN` 或 `data/fusion-service.key`。首次启动仅在文件不存在时生成；至少 32 字节，不输出其值，不提交 Git。
-- 登录复用 `desk_users`、bcrypt 密码、持久登录限流与 `desk_sessions`。`eason_session` 是 HttpOnly Cookie，融合路径为 `/`。知识库服务端转发 Set-Cookie；本地 HTTP 不设置 Secure，未来 HTTPS 适配由入口设置 Secure。
+- 登录复用 `desk_users`、bcrypt 密码、持久登录限流与 `desk_sessions`。`eason_session` 是 HttpOnly Cookie，融合路径为 `/`。知识库服务端转发 Set-Cookie；本地 HTTP 不设置 Secure；HTTPS 部署时，在 Python 进程环境与 KB 私密配置中同时设置 FUSION_PUBLIC_ORIGIN（无路径的 HTTPS origin）。登录与登出 Cookie 根据此显式配置设置 Secure，不信任客户端转发头。
 - 选中客户用 `X-Fusion-Client: <id>`。会员和外部成员只能选择实际授权客户；全局 admin 与现有 owner 有 manager 权限。没有 owner 的旧数据不自动认领。
 - 通过新增 `fusion_client_members` 表保存权限，无迁移既有 owner。重复建表幂等。
 

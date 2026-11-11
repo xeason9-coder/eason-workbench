@@ -33,7 +33,7 @@ class FusionTest(unittest.TestCase):
             change.start()
             self.addCleanup(change.stop)
         env = patch.dict(os.environ, {"FUSION_SERVICE_TOKEN": "test-only-service-token-" + "x" * 32,
-                        "EASON_PUBLIC_ORIGIN": "", "EASON_USER_AI_MIN_INTERVAL": "0",
+                        "EASON_PUBLIC_ORIGIN": "", "FUSION_PUBLIC_ORIGIN": "", "EASON_USER_AI_MIN_INTERVAL": "0",
                         "DEEPSEEK_API_KEY": ""})
         env.start()
         self.addCleanup(env.stop)
@@ -104,6 +104,24 @@ class FusionTest(unittest.TestCase):
         self.http.cookies.clear()
         self.http.cookies.set(auth.COOKIE_NAME, member_cookie)
         self.assertEqual(self.http.get("/fusion/auth/session", headers=self.headers).status_code, 401)
+
+    def test_cookie_security_uses_configured_origin_not_forwarded_headers(self):
+        response = self.http.post("/fusion/auth/login", json={"username": "member", "password": self.password},
+                                  headers={**self.headers, "X-Forwarded-Proto": "https"})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("Secure", response.headers["set-cookie"])
+        with patch.dict(os.environ, {"FUSION_PUBLIC_ORIGIN": "https://workspace.example.test"}):
+            response = self.login()
+            self.assertIn("Secure", response.headers["set-cookie"])
+            self.assertIn("HttpOnly", response.headers["set-cookie"])
+            self.assertIn("SameSite=lax", response.headers["set-cookie"])
+            response = self.http.post("/fusion/auth/logout", headers=self.headers)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("Secure", response.headers["set-cookie"])
+        for origin in ("http://workspace.example.test", "https://workspace.example.test/path", "https://user@workspace.example.test"):
+            with patch.dict(os.environ, {"FUSION_PUBLIC_ORIGIN": origin}):
+                with self.assertRaises(ValueError):
+                    auth._public_origin("FUSION_PUBLIC_ORIGIN")
 
     def test_scope_all_query_body_and_state_paths(self):
         self.login()

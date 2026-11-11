@@ -4,6 +4,7 @@ import {mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync}
 import {join, dirname, basename} from 'node:path';
 import {tmpdir} from 'node:os';
 import assert from 'node:assert/strict';
+import http from 'node:http';
 
 mkdirSync('.sites-runtime/tests', {recursive: true});
 await build({entryPoints: ['tests/fusion-access-worker.ts'], bundle: true, format: 'esm', platform: 'browser',
@@ -84,11 +85,23 @@ async function check(name, fn) {
   try {await fn(); passes.push(name); console.log('PASS:', name);}
   catch (error) {failures.push({name, error}); console.error('FAIL:', name, error.message);}
 }
-async function request(path, {person = 'member', client = 'a', body, method, headers = {}} = {}) {
+async function request(path, {person = 'member', client = 'a', body, method, headers = {}, base = 'https://studio.test', network = false} = {}) {
   const cookie = [person ? 'eason_session=' + person : '', client ? 'fusion_client=' + client : ''].filter(Boolean).join('; ');
-  const response = await mf.dispatchFetch('https://studio.test' + path, {method: method || (body === undefined ? 'GET' : 'POST'),
+  const init = {method: method || (body === undefined ? 'GET' : 'POST'),
     headers: {cookie, ...(body === undefined ? {} : {'content-type': 'application/json'}), ...headers},
-    body: body === undefined ? undefined : JSON.stringify(body)});
+    body: body === undefined ? undefined : JSON.stringify(body)};
+  // A real HTTP request preserves proxy Host; dispatchFetch rewrites it to its internal bridge.
+  const target = network ? new URL(path, await mf.ready) : null;
+  const response = target ? await new Promise((resolve, reject) => {
+    const call = http.request(target, {...init, agent: false}, incoming => {
+      const chunks = [], responseHeaders = new Headers();
+      for (let i = 0; i < incoming.rawHeaders.length; i += 2) responseHeaders.append(incoming.rawHeaders[i], incoming.rawHeaders[i + 1]);
+      incoming.on('data', chunk => chunks.push(chunk));
+      incoming.on('end', () => resolve(new Response(incoming.statusCode === 204 ? null : Buffer.concat(chunks), {status: incoming.statusCode, headers: responseHeaders})));
+      incoming.on('error', reject);
+    });
+    call.on('error', reject); call.end(init.body);
+  }) : await mf.dispatchFetch(base + path, init);
   const text = await response.text();
   let data; try {data = JSON.parse(text);} catch {data = text;}
   return {status: response.status, data, text, headers: response.headers};
@@ -153,6 +166,7 @@ try {
     assert.equal((await request('/api/fusion/select', {body: {id: 'b'}})).status, 403);
     const selected = await request('/api/fusion/select', {person: 'admin', body: {id: 'b'}});
     assert.equal(selected.status, 200); assert.match(selected.headers.get('set-cookie'), /fusion_client=b;.*HttpOnly/);
+    assert.doesNotMatch(selected.headers.get('set-cookie'), /; Secure/i);
     revoked = true;
     assert.equal((await studio('document/doc-a-shared', {person: 'external'})).status, 404);
     revoked = false;
@@ -374,6 +388,33 @@ try {
       assert.equal(row.state, 'waiting'); assert.equal(row.payload.autoAdvance, true);
       assert.equal(modelCalls.length, before, 'collector outage must fail closed before a model call');
     } finally {activeRegistryUnavailable = false;}
+  });
+  await check('HTTPS proxy uses configured origin, validates Host and preserves loopback background auth', async () => {
+    await mf.setOptions({...options, bindings: {...options.bindings, FUSION_PUBLIC_ORIGIN: 'https://studio.test'}});
+    const proxy = {network: true, headers: {host: 'studio.test', origin: 'https://studio.test'}};
+    const initial = await studio('state', proxy); assert.equal(initial.status, 200, initial.text);
+    const before = collectorRequests.length;
+    for (const headers of [
+      {host: 'evil.test', origin: 'https://studio.test'},
+      {host: 'studio.test', origin: 'https://evil.test'},
+      {host: '127.0.0.1:5173', origin: 'https://studio.test', 'x-forwarded-host': 'studio.test', 'x-forwarded-proto': 'https'},
+    ]) assert.equal((await studio('state', {...proxy, headers})).status, 403);
+    assert.equal((await request('/api/fusion/select', {...proxy, body: {id: 'a'}, headers: {host: 'studio.test'}})).status, 403);
+    assert.equal(collectorRequests.length, before);
+    assert.equal((await studio('state', {...proxy, person: null, headers: {...proxy.headers, 'oai-authenticated-user-id': 'admin', 'oai-authenticated-user-email': 'owner@example.test'}})).status, 401);
+    const selected = await request('/api/fusion/select', {...proxy, person: 'admin', body: {id: 'b'}});
+    assert.equal(selected.status, 200, selected.text);
+    assert.match(selected.headers.get('set-cookie'), /HttpOnly; SameSite=Strict; Secure/);
+    archived = true;
+    try {
+      const session = await request('/api/fusion/auth/session', {...proxy, person: 'admin'});
+      assert.equal(session.status, 200); assert.match(session.headers.get('set-cookie'), /Max-Age=0; HttpOnly; SameSite=Strict; Secure/);
+    } finally {archived = false;}
+    const local = {network: true, person: null, client: null, body: {}};
+    assert.equal((await request('/api/fusion/background/tick', local)).status, 403);
+    assert.equal((await request('/api/fusion/background/tick', {...local, headers: {authorization: 'Bearer ' + secret}})).status, 200);
+    await mf.setOptions({...options, bindings: {...options.bindings, FUSION_PUBLIC_ORIGIN: 'http://studio.test/path'}});
+    assert.equal((await studio('state', proxy)).status, 503);
   });
   console.log(JSON.stringify({passed: passes.length, failed: failures.length, modelFixtureCalls: modelCalls.length, collectorFixtureCalls: collectorRequests.length}));
   assert.equal(failures.length, 0, failures.map(({name, error}) => name + ': ' + error.message).join('\n'));

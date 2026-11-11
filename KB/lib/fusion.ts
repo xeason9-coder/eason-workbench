@@ -1,5 +1,5 @@
 import {api} from './studio/api';
-import {collector, fusionSession, requireSameOrigin} from './fusion-service';
+import {collector, fusionSession, publicOrigin, requireSameOrigin} from './fusion-service';
 import {timingSafeEqual} from 'node:crypto';
 
 type R = Record<string, any>;
@@ -17,7 +17,7 @@ async function ensureSchema(env: R) {
 
 export async function fusionApi(request: Request, env: R) {
   try {
-    requireSameOrigin(request);
+    requireSameOrigin(request, env);
     await ensureSchema(env);
     const url = new URL(request.url), path = url.pathname.replace('/api/fusion/', '');
     if (path === 'select' && request.method === 'POST') {
@@ -26,7 +26,7 @@ export async function fusionApi(request: Request, env: R) {
       headers.set('cookie', (headers.get('cookie') || '').split(';').filter(v => !v.trim().startsWith('fusion_client=')).join(';'));
       const session = await fusionSession(new Request(request.url, {headers}), env);
       if (typeof id !== 'string' || !/^[a-zA-Z0-9_.-]{1,60}$/.test(id) || !session.clients.some((c: R) => c.id === id)) return json({error: '无权访问此客户'}, 403);
-      return json({ok: true}, 200, {'Set-Cookie': `fusion_client=${id}; Path=/; HttpOnly; SameSite=Strict`});
+      return json({ok: true}, 200, {'Set-Cookie': `fusion_client=${id}; Path=/; HttpOnly; SameSite=Strict${publicOrigin(env) ? '; Secure' : ''}`});
     }
     if (path === 'background/tick') {
       const expected = Buffer.from('Bearer ' + (env.FUSION_SERVICE_TOKEN || '')), supplied = Buffer.from(request.headers.get('authorization') || '');
@@ -87,7 +87,7 @@ export async function fusionApi(request: Request, env: R) {
     const headers = new Headers(response.headers);
     headers.delete('server'); headers.delete('content-length');
     headers.set('Cache-Control', 'no-store');
-    if (clearClient || response.ok && ['auth/login', 'auth/logout'].includes(path)) headers.append('Set-Cookie', 'fusion_client=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict');
+    if (clearClient || response.ok && ['auth/login', 'auth/logout'].includes(path)) headers.append('Set-Cookie', 'fusion_client=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict' + (publicOrigin(env) ? '; Secure' : ''));
     if (headers.get('content-type')?.includes('application/json')) {
       const result: R = await response.json();
       if (!response.ok) return json({error: typeof result.detail === 'string' ? result.detail : result.error || '请求未完成', detail: result.detail}, response.status);
@@ -103,7 +103,7 @@ export async function fusionApi(request: Request, env: R) {
 
 export async function fusionStudio(request: Request, env: R) {
   try {
-    requireSameOrigin(request);
+    requireSameOrigin(request, env);
     await ensureSchema(env);
     const session = await fusionSession(request, env);
     if (!session.client) return json({error: '请先选择客户空间'}, 409);
