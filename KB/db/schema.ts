@@ -1,0 +1,2 @@
+import {sqliteTable,text,integer,index} from 'drizzle-orm/sqlite-core';
+export const records=sqliteTable('studio_records',{id:text('id').primaryKey(),kind:text('kind').notNull(),owner:text('owner').notNull(),state:text('state').notNull(),revision:integer('revision').notNull().default(1),payload:text('payload').notNull(),created:text('created').notNull(),updated:text('updated').notNull()},t=>[index('studio_owner_kind').on(t.owner,t.kind)]);

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>信源工作台</title><meta name="description" content="按客户整理公众号文章，检索近期主题与原文出处。">
+  <link rel="stylesheet" href="/workbench/assets/desk.css">
+  <script src="/workbench/assets/desk.js" defer></script>
+</head>
+<body>
+<div class="workspace">
+  <aside class="sidebar">
+    <a class="brand" href="/workbench/"><span class="brand-mark" aria-hidden="true">信</span><span><strong id="brandName">信源工作台</strong><small>CONTENT RESEARCH</small></span></a>
+    <div class="client-label"><label for="clientSelect">客户空间</label><button class="icon-button" id="newClient" aria-label="新建客户">＋</button></div>
+    <select id="clientSelect" aria-label="选择客户"><option>加载中…</option></select>
+    <button class="quiet client-edit" id="editClient">管理当前客户 <span>↗</span></button>
+    <nav aria-label="文章库">
+      <p class="nav-caption">内容工作区</p>
+      <button class="nav-item active" data-view="recent"><span class="nav-icon">◷</span>近七天文章<span class="count" id="recentCount">—</span></button>
+      <button class="nav-item" data-view="all"><span class="nav-icon">▤</span>积累文章库<span class="count" id="allCount">—</span></button>
+      <button class="nav-item" data-view="favorites"><span class="nav-icon">☆</span>我的收藏<span class="count" id="favCount">—</span></button>
+      <button class="nav-item" data-view="excluded"><span class="nav-icon">⊖</span>已排除<span class="count" id="hiddenCount">—</span></button>
+      <p class="nav-caption sources-caption">监测与采集</p>
+      <button class="nav-item" data-view="sources"><span class="nav-icon">◎</span>来源管理<span class="count" id="sourceCount">—</span></button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="schedule-line"><span class="status-dot"></span><span id="scheduleLabel">读取采集计划…</span></div>
+      <p id="nextRun">采集服务需持续在线</p>
+      <button class="settings-link" id="openSettings"><span>⚙</span> 设置与连接</button>
+      <small>信源采集 · 按客户整理</small>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="main-header">
+      <div><div class="breadcrumb" id="breadcrumb">客户空间 / 内容参考库</div><h1 id="viewTitle">近七天文章</h1><p id="viewDescription">加载文章库…</p></div>
+      <div class="header-tools"><div class="account-line"><span id="accountName"></span><span id="accountRole" class="small-tag"></span><button class="quiet" id="logoutButton">退出登录</button></div><div class="header-actions"><button class="button" id="exportButton">导出 CSV ↗</button><button class="button primary" id="syncButton">↻ 更新文章</button></div></div>
+    </header>
+    <section class="filters" id="filters" aria-label="筛选文章">
+      <form id="searchForm" class="search-form"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" maxlength="120" placeholder="搜索标题、正文或关键词…" aria-label="搜索文章"><button type="submit" class="search-submit">搜索</button></form>
+      <div class="filter-line"><select id="sourceFilter" aria-label="按公众号筛选"><option value="">全部来源</option></select><select id="daysFilter" aria-label="按发布时间筛选"><option value="7">近七天</option><option value="30">近 30 天</option><option value="90">近 90 天</option><option value="0">全部历史</option></select><span class="result-count" id="resultCount">读取中…</span></div>
+    </section>
+    <div id="syncNotice" class="sync-notice" role="status" hidden></div>
+    <section id="articleList" class="article-list" aria-live="polite"><div class="empty">正在读取已采集的文章…</div></section>
+    <section id="sourcePanel" class="source-panel" hidden></section>
+    <footer id="pagination" class="pagination"><span id="pageInfo"></span><div><button class="button" id="prevPage">上一页</button><button class="button" id="nextPage">下一页</button></div></footer>
+  </main>
+
+  <aside class="assistant-panel" aria-label="对话助手">
+    <header class="assistant-header"><div class="assistant-symbol" aria-hidden="true">✳</div><div><h2>Eason</h2><p id="assistantStatus">检索你的文章库</p></div><button class="icon-button" id="clearChat" aria-label="清空对话" title="清空对话">↺</button><button class="icon-button mobile-only" id="closeChat" aria-label="关闭对话">×</button></header>
+    <div class="scope"><span class="status-dot"></span><span id="chatScope">当前客户 · 未选择</span><span class="scope-tag">有据可查</span></div>
+    <div id="messages" class="messages" aria-live="polite"></div>
+    <div class="chat-bottom"><div id="chatError" class="error-message" role="alert" hidden></div>
+      <form id="chatForm"><label class="sr-only" for="chatInput">向Eason提问</label><textarea id="chatInput" rows="3" maxlength="2000" placeholder="输入客户名＋关键词，或直接提问…"></textarea><div class="composer-bottom"><span>Enter 发送 · Shift+Enter 换行</span><button class="send-button" id="sendChat" aria-label="发送问题">↑</button></div></form>
+      <p class="chat-footnote">回答依据已入库文章；引用卡片保留真实出处。</p>
+    </div>
+  </aside>
+</div>
+<button class="chat-toggle button primary" id="showChat">✳ Eason</button>
+
+<dialog id="clientDialog"><form id="clientForm"><div class="dialog-head"><h2 id="clientDialogTitle">新建客户</h2><button type="button" class="icon-button" data-close="clientDialog" aria-label="关闭">×</button></div><p class="hint">每个客户拥有独立的来源、收藏、关键词和排除记录。</p><label>客户名称<input name="name" maxlength="80" required placeholder="例如：PMI"></label><label>说明<textarea name="description" rows="2" maxlength="300" placeholder="这个客户关注哪些内容？"></textarea></label><div class="dialog-actions"><button type="button" class="button danger" id="archiveClient" hidden>归档客户</button><button type="submit" class="button primary">保存客户</button></div></form><details class="archived-section"><summary>已归档客户</summary><div id="clientArchives"></div></details></dialog>
+
+<dialog id="sourceDialog"><form id="sourceForm"><div class="dialog-head"><h2>添加监测来源</h2><button type="button" class="icon-button" data-close="sourceDialog" aria-label="关闭">×</button></div><p class="hint">首次配置一次，后续自动检查新文章。来源添加到当前客户。</p><label>按公众号名称搜索<input id="sourceSearch" maxlength="100" placeholder="例如：项有所成"></label><button class="button" type="button" id="searchSources">搜索公众号</button><p id="sourceSearchMessage" class="hint" role="status"></p><label>从已有来源或搜索结果选择<select id="existingSource"><option value="">新公众号／手动配置</option></select></label><button class="button shelf-button" type="button" id="loadShelf">从微信读书书架读取公众号</button><p id="shelfMessage" class="hint"></p><label>公众号名称<input name="name" maxlength="100" required placeholder="例如：PMO前沿"></label><label>公众号标识或一次性参考链接<input name="identifier" maxlength="2000" required placeholder="MP_WXS_… 或带 __biz 的文章长链接"></label><p class="hint">也可从微信读书书架选择。普通短文章链接无法直接识别来源。</p><label>来源分类<input name="category" maxlength="50" required value="行业观察" placeholder="行业观察 / 权威机构 / 专业媒体"></label><div class="dialog-actions"><button class="button primary" type="submit">添加来源</button></div></form></dialog>
+
+<dialog id="settingsDialog" class="settings-dialog"><div class="dialog-head"><div><h2>设置与连接</h2><p class="hint">采集、模型与工作台偏好</p></div><button class="icon-button" data-close="settingsDialog" aria-label="关闭">×</button></div>
+  <form id="settingsForm">
+    <label>工作台名称<input name="brand" maxlength="30" required></label>
+    <div class="setting-section"><h3>Eason <span class="small-tag">服务连接</span></h3><p class="hint">发送问题时，会把问题和匹配的文章片段传给管理员配置的模型服务，按服务用量计费。</p><label>回答模式<select name="model"><option value="standard">标准 · 日常检索</option><option value="advanced">增强 · 复杂分析</option></select></label><label>API Key<input name="api_key" type="password" autocomplete="new-password" maxlength="256" placeholder="粘贴 API Key；已保存时留空即可"></label><p id="keyStatus" class="hint"></p><label class="checkbox-line"><input name="clear_key" type="checkbox">移除已保存的密钥</label><button type="button" class="button" id="testModel">测试已保存的连接</button><p id="modelTestResult" class="hint" role="status"></p></div>
+    <div class="setting-section"><h3>微信读书官方搜索（可选）</h3><p class="hint">可选入口：微信读书官方搜索。目前实测返回类型异常，尚未通过公众号名称搜索验收；建议使用下方公众号后台登录。<a href="https://weread.qq.com/r/weread-skills" target="_blank" rel="noopener noreferrer">前往腾讯官方获取 API Key ↗</a></p><label>微信读书官方 API Key<input name="weread_api_key" type="password" autocomplete="new-password" maxlength="512" placeholder="wrk- 开头；已保存时留空即可"></label><p id="wereadKeyStatus" class="hint"></p><label class="checkbox-line"><input name="clear_weread_key" type="checkbox">移除官方搜索密钥</label></div>
+    <div class="setting-section"><h3>每日采集</h3><label class="checkbox-line"><input name="daily_enabled" type="checkbox">自动检查所有客户启用的来源</label><label>执行时间（北京时间）<input name="daily_time" type="time" required></label><p class="hint">采集最近七天，历史文章继续保留。同一来源只采集一次。采集服务需持续运行。</p></div>
+    <div class="dialog-actions"><button class="button primary" type="submit">保存设置</button></div>
+  </form>
+  <div class="setting-section"><h3>公众号后台登录 · 名称搜索</h3><p id="wechatStatus" class="hint"></p><p class="hint">使用 WeRSS 原有搜索入口识别公众号，文章仍由微信读书通道采集。此处仅用于登录和搜索，不发布或修改公众号内容。</p><button type="button" class="button" id="newWechatQr">扫码登录公众号后台</button><div id="wechatQrArea" hidden><img id="wechatQrImage" alt="公众号后台登录二维码" width="220" height="220" hidden><p id="wechatQrStatus" role="status"></p></div></div>
+  <div class="setting-section"><h3>主题关键词</h3><p class="hint">前台显示最重要的 3 个主题词，后台保留更多检索词，正文仍参与搜索。新文章采集后自动提取；已有文章可在这里补全。正文会发往管理员配置的模型服务，按服务用量计费，内容未变时不会重复提取。</p><button class="button" id="extractKeywords">补全当前客户主题词</button><p id="keywordProgress" class="hint" role="status"></p></div>
+  <div class="setting-section"><h3>微信读书</h3><p id="wereadStatus" class="hint"></p><button class="button" id="newQr">扫码登录／更新登录</button><div id="qrArea" hidden><img id="qrImage" alt="微信读书登录二维码"><p id="qrStatus">请用手机微信扫码，并确认登录</p></div></div>
+  <div class="setting-section"><h3>采集记录</h3><div id="runLogs"></div></div>
+  <div class="setting-section"><h3>已归档客户</h3><div id="archivedClients"></div></div>
+  <p class="legal-note">采集能力基于 WeRSS（MIT）。密钥与采集凭据保存在服务端，仅管理员可管理；每个账号拥有独立的客户空间。</p>
+</dialog>
+
+<dialog id="articleDialog" class="article-dialog">
+  <div class="dialog-head"><span class="eyebrow">图文阅读</span><button class="icon-button" data-close="articleDialog" aria-label="关闭文章">×</button></div>
+  <h2 id="detailTitle"></h2><div id="detailMeta" class="article-meta"></div><div id="detailTopics" class="detail-topics"></div>
+  <div class="detail-actions"><a id="detailOriginal" class="button" target="_blank" rel="noopener noreferrer">打开原文 ↗</a><button class="button" id="detailFavorite">收藏</button><button class="button" id="detailHide">排除这篇</button></div>
+  <details class="detail-edit"><summary>编辑主题词与备注</summary><form id="detailForm" class="detail-form">
+    <label>主题关键词<input name="keywords" maxlength="480" placeholder="最重要的放前面，多个关键词用逗号分隔"></label>
+    <p id="detailSearchTerms" class="hint"></p>
+    <label>我的备注<textarea name="note" rows="2" maxlength="2000" placeholder="记录可参考的选题角度…"></textarea></label>
+    <div class="detail-save"><span id="keywordMethod" class="hint"></span><button class="button" type="submit">保存关键词与备注</button></div>
+  </form></details>
+  <iframe id="detailContent" class="article-reader" title="文章图文正文" sandbox="allow-same-origin" referrerpolicy="no-referrer"></iframe>
+</dialog>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body></html>

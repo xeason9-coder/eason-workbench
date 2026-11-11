@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>登录 · Eason 信源工作台</title>
+  <link rel="stylesheet" href="/workbench/assets/desk.css">
+  <script src="/workbench/assets/login.js" defer></script>
+</head>
+<body class="login-page">
+  <main class="login-card">
+    <div class="login-brand"><span class="brand-mark" aria-hidden="true">信</span><span>Eason<small>信源工作台</small></span></div>
+    <div class="login-intro"><p class="eyebrow">内容研究，从这里开始</p><h1>登录你的工作台</h1><p>关注行业动态，积累文章，<br>与 Eason 一起找到有依据的选题。</p></div>
+    <form id="loginForm">
+      <label for="username">用户名</label><input id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="64" required placeholder="输入管理员提供的用户名" autofocus>
+      <label for="password">密码</label><div class="password-field"><input id="password" name="password" type="password" autocomplete="current-password" maxlength="72" required placeholder="输入密码"><button type="button" class="quiet" id="showPassword" aria-controls="password" aria-pressed="false">显示</button></div>
+      <p id="loginError" class="error-message" role="alert" hidden></p>
+      <button class="button primary login-submit" id="loginSubmit" type="submit">登录工作台 <span aria-hidden="true">↗</span></button>
+    </form>
+    <p class="login-note">账号由管理员提供。无法登录时，请联系管理员。</p>
+  </main>
+  <p class="login-footer">每个账号独立管理客户、来源与选题记录。</p>
+</body>
+</html>

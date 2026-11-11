@@ -1,0 +1,21 @@
+# Private runtime and backup data stay outside source control.
+/runtime/
+/backups/
+/.wrangler/
+/.verification/
+**/.venv/
+**/node_modules/
+**/__pycache__/
+**/.env
+**/.env.local
+**/.env.production
+**/.dev.vars*
+*.pem
+*.key
+*.log
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+/we-mp-rss/config.yaml
+/we-mp-rss/data/

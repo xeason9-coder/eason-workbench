@@ -1,0 +1,45 @@
+version: '3.9'
+services:
+  mysql:
+    image: mysql:8.3.0
+    container_name: db-mp
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass123
+      MYSQL_DATABASE: we_mp_rss
+      MYSQL_USER: rss_user
+      MYSQL_PASSWORD: pass123456
+      TZ: Asia/Shanghai
+    ports:
+      - "33060:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d
+
+  we-mp-rss:
+    image: rachelos/we-mp-rss:latest
+    container_name: we-mp-rss-test
+    restart: unless-stopped
+    ports:
+      - "8004:8001"
+    environment:
+      - DB=mysql+pymysql://rss_user:pass123456@db-mp:3306/we_mp_rss?charset=utf8mb4
+      - USERNAME=admin
+      - PASSWORD=admin@123
+      - WERSS_AUTH_WEB=True
+      - WE_RSS.AUTH=True
+      - DINGDING_WEBHOOK=https://oapi.dingtalk.com/robot/send?access_token=xxx
+      - WE_RSS.AUTH=True
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - mysql
+
+
+volumes:
+  db_data:
+
+networks:
+  we-mp-rss:
+
+

@@ -1,0 +1,3 @@
+js entries: 4
+=== shelf/follow/subscribe/add 相关路径 ===
+[wrFetchClient] /api/mp/cover
